@@ -37,25 +37,28 @@ SETUP_CODE_FOR_CLIENT = """
 			break # for now
 
 	while True:
-		context["data"] = context.get("socket").recv(context.get("protocol").get("buffer-size"))
-	
+		context["data"] = context.get("socket").recv(context.get("protocol").get("buffer-size")).decode().strip(suffix)
+
+		print(context.get("data"))
+
 		if normal_sub_proto.get("function-configurations"):
 			for function_configuration in normal_sub_proto.get("function-configurations"):
 				if function_configuration.get("data-must-equal"):
-					if context.get("data").decode().strip(suffix) == function_configuration.get("data-must-equal"):
+					if context.get("data") == function_configuration.get("data-must-equal"):
 						eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
 				elif function_configuration.get("data-must-be-prefixed"):
-					if data.decode().startswith(function_configuration.get('data-must-be-prefixed')):
+					if context.get("data").startswith(function_configuration.get('data-must-be-prefixed')):
 						eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
 				elif function_configuration.get("data-can-be-anything"):
 					eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
 				else:
 					print("Error: Invalid function configuration.")
+					context.get("socket").close()
 		else:
 			print("Error: No function configurations found.")
-		context.get("socket").close()
+			context.get("socket").close()
 	
-	context.get("connection").close()
+	context.get("socket").close()
 """
 
 SETUP_CODE_FOR_SERVER = """
@@ -95,7 +98,9 @@ SETUP_CODE_FOR_SERVER = """
 
 	while True:
 		command = input(">>> ")
-		context.get("connection").send(f"{command}\u0003".encode())
+		context.get("connection").send(f"{command}\\u0003".encode())
+		context["data"] = context.get("connection").recv(context.get("protocol").get("buffer-size"))
+		print(context.get("data").decode().strip(suffix))
 	
 	context.get("connection").close()
 """
