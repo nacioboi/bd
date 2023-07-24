@@ -36,8 +36,15 @@ SETUP_CODE_FOR_CLIENT = """
 			data = context.get("socket").recv(context.get("protocol").get("buffer-size"))
 			break # for now
 
+	def receive_data():
+		context["data"] = ""
+		while not context.get("data").endswith(suffix):
+			context["data"] += context.get("socket").recv(context.get("protocol").get("buffer-size")).decode()
+		return context.get("data").strip(suffix)
+
+			
 	while True:
-		context["data"] = context.get("socket").recv(context.get("protocol").get("buffer-size")).decode().strip(suffix)
+		context["data"] = receive_data()
 
 		print(context.get("data"))
 
@@ -96,11 +103,17 @@ SETUP_CODE_FOR_SERVER = """
 			data = context.get("connection").recv(context.get("protocol").get("buffer-size"))
 			break # for now
 
+	def receive_data():
+		context["data"] = ""
+		while not context.get("data").endswith(suffix):
+			context["data"] += context.get("connection").recv(context.get("protocol").get("buffer-size")).decode()
+		return context.get("data").strip(suffix)
+
 	while True:
 		command = input(">>> ")
 		context.get("connection").send(f"{command}\\u0003".encode())
-		context["data"] = context.get("connection").recv(context.get("protocol").get("buffer-size"))
-		print(context.get("data").decode().strip(suffix))
+		context["data"] = receive_data()
+		print(context.get("data"))
 	
 	context.get("connection").close()
 """

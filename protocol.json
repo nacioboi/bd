@@ -45,10 +45,6 @@
 				"data-must-equal": "exit"
 			},
 			{
-				"function-to-call-on-match": "handle_change_dir",
-				"data-must-be-prefixed": "cd"
-			},
-			{
 				"function-to-call-on-match": "handle_command",
 				"data-can-be-anything": true
 			}

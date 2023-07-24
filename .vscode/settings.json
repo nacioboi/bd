@@ -1,6 +1,9 @@
 {
 	"cSpell.words": [
 		"comms",
-		"notabackdoorbuilder"
+		"GETFL",
+		"NONBLOCK",
+		"notabackdoorbuilder",
+		"SETFL"
 	]
 }
