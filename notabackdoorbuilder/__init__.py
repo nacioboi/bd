@@ -197,8 +197,8 @@ def paste_setup_code(file, mode):
 			if isinstance(node, ast.Import):
 				pos_of_last_import = get_char_of_line(file, node.lineno)
 			elif isinstance(node, ast.FunctionDef):
-				pos_of_main = get_char_of_line(file, node.lineno)
-				pos_of_before_main = get_char_of_line(file, node.lineno-1)
+				pos_of_main = get_char_of_line(file, node.lineno-1)
+				pos_of_before_main = get_char_of_line(file, node.lineno-2)
 		new_file_contents = ""
 		new_file_contents += contents[:pos_of_last_import] + "\n"
 		new_file_contents += get_import_section(file, mode, pos_of_last_import) + "\n"
@@ -208,7 +208,7 @@ def paste_setup_code(file, mode):
 		new_file_contents += contents[pos_of_before_main:pos_of_main] + "\n"
 		new_file_contents += get_main_section(file, mode, pos_of_main) + "\n"
 		new_file_contents += contents[pos_of_main:] + "\n"
-		new_file_contents += "if __name__ == \"__main__\":\n\tmain()" + "\n"
+		new_file_contents += "if __name__ == \"__main__\":\n\t__main()" + "\n"
 		f.write(new_file_contents)
 
 def handle_client(client_file):
@@ -218,7 +218,7 @@ def handle_server(server_file):
 	paste_setup_code(server_file, "server")
 
 def handle_setup(mode):
-	eval("__main()")
+	pass
 
 def get_file_content():
 	file_names = [file_name for file_name in os.listdir() if os.path.isfile(file_name) and file_name != "build.py"]

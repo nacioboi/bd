@@ -138,7 +138,7 @@ def __main():
 	while True:
 		command = input("# ")
 		connection.send(f"{command}{suffix}".encode())
-		context["data"] = receive_data()
+		context["data"] = receive_data(context)
 		data = context.get("data")
 		print(data)
 

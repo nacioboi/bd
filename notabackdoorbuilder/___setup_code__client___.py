@@ -128,7 +128,7 @@ def __main():
 
 
 	while True:
-		context["data"] = receive_data()
+		context["data"] = receive_data(context)
 
 		data = context.get("data")
 
