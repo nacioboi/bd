@@ -5,11 +5,13 @@ import re
 import io
 
 
-
 SETUP_CODE_FOR_CLIENT = open("notabackdoorbuilder/___setup_code__client___.py", "r").read()
 SETUP_CODE_FOR_SERVER = open("notabackdoorbuilder/___setup_code__server___.py", "r").read()
 
-
+def add_tab_to_lines(input_string):
+	lines = input_string.splitlines()
+	indented_lines = ['\t' + line for line in lines]
+	return '\n'.join(indented_lines)
 
 def get_char_of_line(file, line):
 	char_counter = 0
@@ -19,6 +21,7 @@ def get_char_of_line(file, line):
 		if char == "\n":
 			line_counter += 1
 		char_counter += 1
+	return char_counter
 
 def get_all_comments(file):
 	comments = []
@@ -43,7 +46,6 @@ def get_import_section(file, mode, pos):
 	all_comments = get_all_comments(setup_file)
 	for node in all_comments:
 		comment_val = node.string.strip()
-		print(comment_val)
 		lookup_tokens = [
 			"#",
 			"[",
@@ -56,7 +58,7 @@ def get_import_section(file, mode, pos):
 			if start_pos_of_section != -1:
 				# we had two definitions of the same section, we report error
 				print(f"You must only have one declaration for each section in the setup code file.")
-			start_pos_of_section = get_char_of_line(setup_file, node.start[0])
+			start_pos_of_section = get_char_of_line(setup_file, node.start[0]-1)
 	for node in all_comments:
 		comment_val = node.string.strip()
 		lookup_tokens = [
@@ -71,11 +73,102 @@ def get_import_section(file, mode, pos):
 			if end_pos_of_section != -1:
 				print("You must only have one declaration for each section in the setup code file.")
 			end_pos_of_section = get_char_of_line(setup_file, node.start[0])
-	print(start_pos_of_section, end_pos_of_section)
 	
+	if start_pos_of_section == -1 or end_pos_of_section == -1:
+		print("Error: Could not find import section in setup code file.")
+		return ""
 
+	return setup_file_contents[start_pos_of_section:end_pos_of_section]
 
-def paste_protocol(file, mode):
+def get_before_main_section(file, mode, pos):
+	contents = file[1][pos:]
+	setup_file_name = "___setup_code__client___.py" if mode == "client" else "___setup_code__server___.py"
+	setup_file = (setup_file_name, open(f"notabackdoorbuilder/{setup_file_name}", "r").read())
+	setup_file_contents = setup_file[1]
+	start_pos_of_section = -1
+	end_pos_of_section = -1
+	all_comments = get_all_comments(setup_file)
+	for node in all_comments:
+		comment_val = node.string.strip()
+		lookup_tokens = [
+			"#",
+			"[",
+			"begin-insert:",
+			"before-main",
+			"]",
+			"#",
+		]
+		if is_matching_lookup_tokens(comment_val, lookup_tokens):
+			if start_pos_of_section != -1:
+				# we had two definitions of the same section, we report error
+				print(f"You must only have one declaration for each section in the setup code file.")
+			start_pos_of_section = get_char_of_line(setup_file, node.start[0]-1)
+	for node in all_comments:
+		comment_val = node.string.strip()
+		lookup_tokens = [
+			"#",
+			"[",
+			"end-insert:",
+			"before-main",
+			"]",
+			"#",
+		]
+		if is_matching_lookup_tokens(comment_val, lookup_tokens):
+			if end_pos_of_section != -1:
+				print("You must only have one declaration for each section in the setup code file.")
+			end_pos_of_section = get_char_of_line(setup_file, node.start[0])
+	
+	if start_pos_of_section == -1 or end_pos_of_section == -1:
+		print("Error: Could not find before-main section in setup code file.")
+		return ""
+	
+	return setup_file_contents[start_pos_of_section:end_pos_of_section]
+
+def get_main_section(file, mode, pos):
+	contents = file[1][pos:]
+	setup_file_name = "___setup_code__client___.py" if mode == "client" else "___setup_code__server___.py"
+	setup_file = (setup_file_name, open(f"notabackdoorbuilder/{setup_file_name}", "r").read())
+	setup_file_contents = setup_file[1]
+	start_pos_of_section = -1
+	end_pos_of_section = -1
+	all_comments = get_all_comments(setup_file)
+	for node in all_comments:
+		comment_val = node.string.strip()
+		lookup_tokens = [
+			"#",
+			"[",
+			"begin-insert:",
+			"main",
+			"]",
+			"#",
+		]
+		if is_matching_lookup_tokens(comment_val, lookup_tokens):
+			if start_pos_of_section != -1:
+				# we had two definitions of the same section, we report error
+				print(f"You must only have one declaration for each section in the setup code file.")
+			start_pos_of_section = get_char_of_line(setup_file, node.start[0]-1)
+	for node in all_comments:
+		comment_val = node.string.strip()
+		lookup_tokens = [
+			"#",
+			"[",
+			"end-insert:",
+			"main",
+			"]",
+			"#",
+		]
+		if is_matching_lookup_tokens(comment_val, lookup_tokens):
+			if end_pos_of_section != -1:
+				print("You must only have one declaration for each section in the setup code file.")
+			end_pos_of_section = get_char_of_line(setup_file, node.start[0])
+	
+	if start_pos_of_section == -1 or end_pos_of_section == -1:
+		print("Error: Could not find main section in setup code file.")
+		return ""
+	
+	return setup_file_contents[start_pos_of_section:end_pos_of_section]
+
+def paste_setup_code(file, mode):
 	"""
 	Modifies the given file to include the protocol.
 	"""
@@ -112,45 +205,21 @@ def paste_protocol(file, mode):
 				pos_of_before_main = get_char_of_line(file, node.lineno-1)
 		new_file_contents = ""
 		new_file_contents += contents[:pos_of_last_import]
-		new_file_contents += get_import_section(file, mode, pos_of_last_import)
+		new_file_contents += get_import_section(file, mode, pos_of_last_import) + "\n"
 		new_file_contents += contents[pos_of_last_import:pos_of_before_main]
-		new_file_contents += get_before_main_section(file, mode, pos_of_before_main)
-		new_file_contents += f"___INSERTED_PROTOCOL___ = \"\"\"\n{protocol}\n\"\"\"\n\n"
+		new_file_contents += get_before_main_section(file, mode, pos_of_before_main) + "\n"
+		new_file_contents += f"\n\n___INSERTED_PROTOCOL___ = \"\"\"\n{protocol}\n\"\"\"\n\n"
 		new_file_contents += contents[pos_of_before_main:pos_of_main]
-		new_file_contents += get_main_section(file, mode,  pos_of_main)
+		new_file_contents += add_tab_to_lines(get_main_section(file, mode, pos_of_main)+"\n")
 		new_file_contents += contents[pos_of_main:]
+		new_file_contents += "\n\nif __name__ == \"__main__\":\n\tmain()\n"
 		f.write(new_file_contents)
 
-def paste_setup(file, mode):
-	"""
-	Modifies the given file to include the setup code.
-	"""
-	new_file_name = ""
-	if mode == "client":
-		new_file_name = "___build_candidate__client___.py"
-	else:
-		new_file_name = "___build_candidate__server___.py"
-	
-	new_file_contents = ""
-	with open(new_file_name, "a") as f:
-		tree = ast.parse(file[1])
-		for node in ast.walk(tree):
-			if isinstance(node, ast.FunctionDef):
-				# check if the function is main, if it is we want to split the file just before 'def main():'
-				if node.name == "main":
-					if mode == "client":
-						f.write(SETUP_CODE_FOR_CLIENT)
-					else:
-						f.write(SETUP_CODE_FOR_SERVER)
-					break
-
 def handle_client(client_file):
-	paste_protocol(client_file, "client")
-	paste_setup(client_file, "client")
+	paste_setup_code(client_file, "client")
 
 def handle_server(server_file):
-	paste_protocol(server_file, "server")
-	paste_setup(server_file, "server")
+	paste_setup_code(server_file, "server")
 
 def handle_setup(mode):
 	pass
@@ -222,3 +291,4 @@ def build():
 
 	handle_client(client_file)
 	handle_server(server_file)
+	

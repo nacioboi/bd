@@ -23,11 +23,11 @@ import json
 
 
 
-# [begin-insert: above-main] #
+# [begin-insert: before-main] #
 
 
 
-def receive_data():
+def receive_data(context):
 	context["data"] = ""
 	while not context.get("data").endswith(suffix):
 		context["data"] += context.get("socket").recv(context.get("protocol").get("buffer-size")).decode()
@@ -42,7 +42,7 @@ def handle_error(context, error_message):
 
 
 
-# [end-insert: above-main] #
+# [end-insert: before-main] #
 
 
 
