@@ -8,10 +8,6 @@ import io
 SETUP_CODE_FOR_CLIENT = open("notabackdoorbuilder/___setup_code__client___.py", "r").read()
 SETUP_CODE_FOR_SERVER = open("notabackdoorbuilder/___setup_code__server___.py", "r").read()
 
-def add_tab_to_lines(input_string):
-	lines = input_string.splitlines()
-	indented_lines = ['\t' + line for line in lines]
-	return '\n'.join(indented_lines)
 
 def get_char_of_line(file, line):
 	char_counter = 0
@@ -204,15 +200,15 @@ def paste_setup_code(file, mode):
 				pos_of_main = get_char_of_line(file, node.lineno)
 				pos_of_before_main = get_char_of_line(file, node.lineno-1)
 		new_file_contents = ""
-		new_file_contents += contents[:pos_of_last_import]
+		new_file_contents += contents[:pos_of_last_import] + "\n"
 		new_file_contents += get_import_section(file, mode, pos_of_last_import) + "\n"
-		new_file_contents += contents[pos_of_last_import:pos_of_before_main]
+		new_file_contents += contents[pos_of_last_import:pos_of_before_main] + "\n"
 		new_file_contents += get_before_main_section(file, mode, pos_of_before_main) + "\n"
-		new_file_contents += f"\n\n___INSERTED_PROTOCOL___ = \"\"\"\n{protocol}\n\"\"\"\n\n"
-		new_file_contents += contents[pos_of_before_main:pos_of_main]
-		new_file_contents += add_tab_to_lines(get_main_section(file, mode, pos_of_main)+"\n")
-		new_file_contents += contents[pos_of_main:]
-		new_file_contents += "\n\nif __name__ == \"__main__\":\n\tmain()\n"
+		new_file_contents += f"___INSERTED_PROTOCOL___ = \"\"\"\n{protocol}\n\"\"\"" + "\n"
+		new_file_contents += contents[pos_of_before_main:pos_of_main] + "\n"
+		new_file_contents += get_main_section(file, mode, pos_of_main) + "\n"
+		new_file_contents += contents[pos_of_main:] + "\n"
+		new_file_contents += "if __name__ == \"__main__\":\n\tmain()" + "\n"
 		f.write(new_file_contents)
 
 def handle_client(client_file):
@@ -222,7 +218,7 @@ def handle_server(server_file):
 	paste_setup_code(server_file, "server")
 
 def handle_setup(mode):
-	pass
+	eval("__main()")
 
 def get_file_content():
 	file_names = [file_name for file_name in os.listdir() if os.path.isfile(file_name) and file_name != "build.py"]
