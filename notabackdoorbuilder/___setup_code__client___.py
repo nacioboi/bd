@@ -53,7 +53,13 @@ def handle_error(context, error_message):
 
 # [begin-insert: main] #
 
+
+
 def __main():
+	eval("main()")
+
+
+
 	___INSERTED_PROTOCOL___new___ = None
 	if not "___INSERTED_PROTOCOL___" in globals(): handle_error(None, "No protocol inserted.")
 	___INSERTED_PROTOCOL___new___ = globals().get("___INSERTED_PROTOCOL___")
@@ -150,5 +156,7 @@ def __main():
 
 
 	sock.close()
+
+
 
 # [end-insert: main] #
