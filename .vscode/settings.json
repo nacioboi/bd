@@ -2,8 +2,10 @@
 	"cSpell.words": [
 		"comms",
 		"GETFL",
+		"maxread",
 		"NONBLOCK",
 		"notabackdoorbuilder",
+		"sendline",
 		"SETFL"
 	]
 }

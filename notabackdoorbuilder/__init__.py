@@ -1,5 +1,6 @@
 import tokenize
 import ast
+import sys
 import os
 import re
 import io
@@ -47,7 +48,7 @@ def get_all_comments(file):
 
 def is_matching_lookup_tokens(string_to_compare, lookup_tokens):
 	pattern = r"\s*?\s*".join(re.escape(token) for token in lookup_tokens)
-	regex = re.compile(f"^{pattern}\s*?$")
+	regex = re.compile(f"^{pattern}\\s*?$")
 	return bool(regex.match(string_to_compare.strip()))
 
 
@@ -92,6 +93,14 @@ def get_section(mode, section_name):
 def get_setup_code(file, mode, pos_of_last_import, pos_of_before_main, pos_of_main):
 	contents = file[1]
 	protocol = open("protocol.json", "r").read()
+
+	pos = protocol.find("\\u")
+	while pos != -1:
+		new_protocol = ""
+		new_protocol += protocol[:pos] + "\\" + protocol[pos:]
+		protocol = new_protocol
+		pos = protocol.find("\\u", pos+5)
+	
 	new_file_contents = ""
 	new_file_contents += contents[:pos_of_last_import] 					+ "\n"
 	new_file_contents += get_section(mode, "imports") 					+ "\n"
@@ -102,6 +111,7 @@ def get_setup_code(file, mode, pos_of_last_import, pos_of_before_main, pos_of_ma
 	new_file_contents += get_section(mode, "main") 						+ "\n"
 	new_file_contents += contents[pos_of_main:] 						+ "\n"
 	new_file_contents += "if __name__ == \"__main__\":\n\t__main()" 			+ "\n"
+
 	return new_file_contents
 
 def paste_setup_code(file, mode):
@@ -110,14 +120,6 @@ def paste_setup_code(file, mode):
 		return
 	
 	new_file_name = "___build_candidate__client___.py" if mode == "client" else "___build_candidate__server___.py"
-	
-
-	pos = protocol.find("\\u")
-	while pos != -1:
-		new_protocol = ""
-		new_protocol += protocol[:pos] + "\\" + protocol[pos:]
-		protocol = new_protocol
-		pos = protocol.find("\\u", pos+5)
 
 	with open(new_file_name, "w") as f:
 		nodes = [node for node in walk_ast(file)]
@@ -127,14 +129,37 @@ def paste_setup_code(file, mode):
 		pos_of_last_import = 0
 		pos_of_main = 0
 		pos_of_before_main = 0
+
 		for node in nodes_filtered:
 			if isinstance(node, ast.Import):
 				pos_of_last_import = get_char_of_line(file, node.lineno)
 			elif isinstance(node, ast.FunctionDef):
 				pos_of_main = get_char_of_line(file, node.lineno-1)
 				pos_of_before_main = get_char_of_line(file, node.lineno-2)
+
 		f.write(get_setup_code(file, mode, pos_of_last_import, pos_of_before_main, pos_of_main))
 
+	with open(new_file_name, "r") as f:
+		code = f.read()
+
+	new_file_contents = ""
+	nodes = [node for node in ast.walk(ast.parse(code)) if isinstance(node, ast.Call) ]
+
+	start_of_handle_setup_call = None
+	for node in nodes:
+		try:
+			if isinstance(node, ast.Call):
+				if node.func.attr == "handle_setup":
+					if node.func.value.id == "notabackdoorbuilder":
+						start_of_handle_setup_call = get_char_of_line((None, code), node.lineno-1)
+						break
+		except:
+			pass
+	
+	new_contents = f"{code[:start_of_handle_setup_call]}#{code[start_of_handle_setup_call:]}"
+
+	with open(new_file_name, "w") as f:
+		f.write(new_contents)
 
 
 # functions for handling build code.
@@ -146,10 +171,24 @@ def handle_server(server_file):
 	paste_setup_code(server_file, "server")
 
 def handle_setup(mode):
-	pass
+	build()
+	if mode == "server":
+		with open("___build_candidate__server___.py", "r") as f:
+			contents = f.read()
+		if len(sys.argv) > 2:
+			args = sys.argv[2:]
+		else:
+			args = []
+		os.execl(sys.argv[1], "python", "./___build_candidate__server___.py", *args)
+	elif mode == "client":
+		with open("___build_candidate__client___.py", "r") as f:
+			contents = f.read()
+		eval(compile(contents, "___build_candidate__client___.py", "exec"))
 
 def get_files_in_directory():
 	file_names = [file_name for file_name in os.listdir() if os.path.isfile(file_name) and file_name != "build.py"]
+	file_names = [file_name for file_name in file_names if file_name != "___build_candidate__client___.py"]
+	file_names = [file_name for file_name in file_names if file_name != "___build_candidate__server___.py"]
 	return [(file_name,open(file_name, "r").read()) for file_name in file_names if file_name.endswith(".py")]
 
 def filter_files(files):

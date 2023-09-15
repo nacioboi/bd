@@ -1,4 +1,6 @@
 import notabackdoorbuilder
 
+notabackdoorbuilder.handle_setup("server")
+
 def main():
-	notabackdoorbuilder.handle_setup("server")
+	pass
