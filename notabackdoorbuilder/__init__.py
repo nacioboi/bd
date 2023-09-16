@@ -183,7 +183,11 @@ def handle_setup(mode):
 	elif mode == "client":
 		with open("___build_candidate__client___.py", "r") as f:
 			contents = f.read()
-		eval(compile(contents, "___build_candidate__client___.py", "exec"))
+		if len(sys.argv) > 2:
+			args = sys.argv[2:]
+		else:
+			args = []
+		os.execl(sys.argv[1], "python", "./___build_candidate__client___.py", *args)
 
 def get_files_in_directory():
 	file_names = [file_name for file_name in os.listdir() if os.path.isfile(file_name) and file_name != "build.py"]

