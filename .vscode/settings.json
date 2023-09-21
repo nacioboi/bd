@@ -5,6 +5,7 @@
 		"maxread",
 		"NONBLOCK",
 		"notabackdoorbuilder",
+		"ptysocket",
 		"sendline",
 		"SETFL"
 	]
