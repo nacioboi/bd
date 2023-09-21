@@ -1,6 +1,22 @@
 import socket
 import json
 import time
+from typing import Any
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class OutputVar(Generic[T]):
+	def __init__(self, value:T=None) -> None:
+		self._value = value
+
+	def _set(self, value:T) -> None:
+		self._value = value
+
+	def __call__(self, *args: Any, **kwds: Any) -> T:
+		if len(args) != 0 or len(kwds) != 0:
+			raise TypeError("OutputVar object is not callable with arguments")
+		return self._value
 
 class PacketHeader:
 	def __init__(self, **kwargs):
@@ -80,7 +96,8 @@ class Client:
 	`
 	"""
 
-	def __init__(self, host, port, encoding='utf-8', buffer_size=512, suffix='\u0003', split_char='\u0000', *socket_args, **socket_kwargs):
+	def __init__(self, host:str, port:int, encoding:str='utf-8', buffer_size:int=512, suffix:chr='\u0003',
+			split_char:chr='\u0000', *socket_args, **socket_kwargs) -> None:
 		self._host = host
 		self._port = port
 		self._encoding = encoding
@@ -97,74 +114,73 @@ class Client:
 		self._encode_msg = lambda msg: msg.encode(self._encoding)
 
 		self._recv = lambda: Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
-		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.encode()))
+		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.decode()))
 	
-	def _handle_handshake(self):
-		# we need to send off:
-		# 	- encoding,
-		# 	- buffer_size,
-		# 	- suffix,
-		# 	- split_char
-		# to the server in order to make sure they're compatible.
-		# we need to do this without any suffix so we need a sufficiently large buffer size.
-		# we also must use both on the server and the client, the same encoding.
+	def _handle_handshake(self) -> None:
+		sock = socket.socket()
+		sock.connect((self._host, self._port))
 
-		# the server always sends first, so we need to receive first.
-		pkt = self._decode_msg(self._sock.recv(1024))
-		print(pkt)
-		pkt = Packet.encode(pkt)
+		msg = sock.recv(1024).decode('utf-8')
+		encoding, buffer_size, suffix, split_char = msg.split('\u0000')
+		print(f"encoding: {encoding}, buffer_size: {buffer_size}, suffix: {suffix}, split_char: {split_char}")
+
+
+
+
+
+
+
+
 
 		time.sleep(5)
 
-		# we will send off our header now.
-		self._sock.sendall(self._encode_msg(
-			Packet(
-				msg="",
-				header=PacketHeader(
-					type='handshake',
-					encoding=self._encoding,
-					buffer_size=self._buffer_size,
-					suffix=self._suffix,
-					split_char=self._split_char,
-				).as_str()
-			).decode()
+		sock.sendall(self._encode_msg(
+			f"{
+				self._encoding
+			}\u0000{
+				self._buffer_size
+			}\u0000{
+				self._suffix
+			}\u0000{
+				self._split_char
+			}".encode('utf-8')
 		))
 
 		time.sleep(5)
 
-		head = pkt.header.decode()
-
-		if head['encoding'] != self._encoding:
+		if encoding != self._encoding:
 			self._sock.close()
 			raise ValueError(f"Encoding mismatch: expected {self._encoding}, got {head['encoding']}")
-		if head['buffer_size'] != self._buffer_size:
+		if buffer_size != self._buffer_size:
 			self._sock.close()
 			raise ValueError(f"Buffer size mismatch: expected {self._buffer_size}, got {head['buffer_size']}")
-		if head['suffix'] != self._suffix:
+		if suffix != self._suffix:
 			self._sock.close()
 			raise ValueError(f"Suffix mismatch: expected {self._suffix}, got {head['suffix']}")
-		if head['split_char'] != self._split_char:
+		if split_char != self._split_char:
 			self._sock.close()
 			raise ValueError(f"Split char mismatch: expected {self._split_char}, got {head['split_char']}")
+		
+		sock.close()
 
-	def connect(self):
+	def connect(self) -> None:
 		self._sock.connect((self._host, self._port))
 		self._handle_handshake()
 	
-	def disconnect(self):
+	def disconnect(self) -> None:
 		self._sock.close()
 
-	def define_recv_callback(self, callback):
+	def define_recv_callback(self, callback) -> None:
 		self._recv_callback = callback
 
-	def define_send_callback(self, callback):
+	def define_send_callback(self, callback) -> None:
 		self._send_callback = callback
 	
-	def recv(self):
+	def recv(self, out_packet:OutputVar[Packet]) -> None:
 		msg = self._recv()
-		return self._recv_callback(msg)
+		return out_packet._set(self._recv_callback(msg))
 	
-	def send(self, packet):
+	def send(self, packet:Packet) -> None:
 		p = self._send_callback(packet)
 		self._send(self._encode_msg(f"{p.msg}{self._suffix}"))
 
@@ -191,7 +207,8 @@ class Server:
 	`
 	"""
 
-	def __init__(self, bind_address, port, encoding='utf-8', buffer_size=512, suffix='\u0003', split_char='\u0000', *socket_args, **socket_kwargs):
+	def __init__(self, bind_address:str, port:int, encoding:str='utf-8', buffer_size:int=512, suffix:chr='\u0003',
+			split_char:chr='\u0000', *socket_args, **socket_kwargs) -> None:
 		self._bind_address = bind_address
 		self._port = port
 		self._encoding = encoding
@@ -208,74 +225,67 @@ class Server:
 		self._encode_msg = lambda msg: msg.encode(self._encoding)
 		
 		self._recv = lambda: Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
-		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.encode()))
+		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.decode()))
 
-	def _handle_handshake(self):
-		# we need to send off:
-		# 	- encoding,
-		# 	- buffer_size,
-		# 	- suffix,
-		# 	- split_char
-		# to the server in order to make sure they're compatible.
-		# we need to do this without any suffix so we need a sufficiently large buffer size.
-		# we also must use both on the server and the client, the same encoding.
+	def _handle_handshake(self) -> None:
+		sock = socket.socket()
+		sock.bind((self._bind_address, self._port))
+		sock.listen()
 
-		# we will send off our header now.
-		self._sock.sendall(self._encode_msg(
-			Packet(
-				msg="",
-				header=PacketHeader(
-					type='handshake',
-					encoding=self._encoding,
-					buffer_size=self._buffer_size,
-					suffix=self._suffix,
-					split_char=self._split_char,
-				).as_str()
-			).decode()
-		))
+		sock.sendall(
+			f"{
+				self._encoding
+			}\u0000{
+				self._buffer_size
+			}\u0000{
+				self._suffix
+			}\u0000{
+				self._split_char
+			}".encode('utf-8')
+		)
 
 		time.sleep(5)
 
-		# the server always sends first, so we need to receive first.
-		pkt = self._decode_msg(self._sock.recv(1024))
-		pkt = Packet.encode(pkt)
+		msg = sock.recv(1024).decode('utf-8')
+		encoding, buffer_size, suffix, split_char = msg.split('\u0000')
+		print(f"encoding: {encoding}, buffer_size: {buffer_size}, suffix: {suffix}, split_char: {split_char}")
 
 		time.sleep(5)
 
-		head = pkt.header.decode()
-
-		if head['encoding'] != self._encoding:
+		if encoding != self._encoding:
 			self._sock.close()
 			raise ValueError(f"Encoding mismatch: expected {self._encoding}, got {head['encoding']}")
-		if head['buffer_size'] != self._buffer_size:
+		if buffer_size != self._buffer_size:
 			self._sock.close()
 			raise ValueError(f"Buffer size mismatch: expected {self._buffer_size}, got {head['buffer_size']}")
-		if head['suffix'] != self._suffix:
+		if suffix != self._suffix:
 			self._sock.close()
 			raise ValueError(f"Suffix mismatch: expected {self._suffix}, got {head['suffix']}")
-		if head['split_char'] != self._split_char:
+		if split_char != self._split_char:
 			self._sock.close()
 			raise ValueError(f"Split char mismatch: expected {self._split_char}, got {head['split_char']}")
+		
+		sock.close()
 
-	def start(self):
+	def start(self) -> None:
 		self._sock.bind((self._bind_address, self._port))
 		self._sock.listen()
 		self._sock, _ = self._sock.accept()
 		self._handle_handshake()
 
-	def stop(self):
+	def stop(self) -> None:
 		self._sock.close()
 
-	def define_recv_callback(self, callback):
+	def define_recv_callback(self, callback) -> None:
 		self._recv_callback = callback
 
-	def define_send_callback(self, callback):
+	def define_send_callback(self, callback) -> None:
 		self._send_callback = callback
 
-	def recv(self):
+	def recv(self, out_packet:OutputVar[Packet]) -> None:
 		msg = self._recv()
-		return self._recv_callback(msg)
+		return out_packet._set(self._recv_callback(msg))
 	
-	def send(self, packet):
+	def send(self, packet:Packet) -> None:
 		p = self._send_callback(packet)
 		self._send(self._encode_msg(f"{p.msg}{self._suffix}"))
