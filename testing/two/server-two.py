@@ -5,16 +5,16 @@ from ptysocket.SocketWrapper import OutputVar
 import random
 
 def generate_random_data(chunk_size=1024):
-	return ''.join([chr(random.randint(0, 255)) for _ in range(chunk_size)])
+	return ''.join([chr(random.randint(32, 126)) for _ in range(chunk_size)])
 
 server = SocketWrapperServer(
 	bind_address='0.0.0.0', port=2222,
-	buffer_size=1,
+	buffer_size=32,
 )
 
 server.start()
 
-server.send(SocketWrapperPacket("hi"))
+server.send(SocketWrapperPacket("hifdjgkdgkl;fgkl;jgk;akgjdkla;gjfklghfjgd;lhgkdjgkjdkagjkldagkdhasj;fdsakfjdkaj;fkdahgkhdsajgdksa;gkdsalhgkldghkdhakgfjdklagkdhasklgdsakl;g"))
 
 
 
@@ -24,6 +24,6 @@ server.recv(out_packet)
 packet = out_packet()
 
 
-print(f"Received: {packet.msg}")
+print(f"Received: {repr(packet.msg)}")
 
 server.stop()
