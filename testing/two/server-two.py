@@ -14,7 +14,7 @@ server = SocketWrapperServer(
 
 server.start()
 
-server.send(SocketWrapperPacket("hifdjgkdgkl;fgkl;jgk;akgjdkla;gjfklghfjgd;lhgkdjgkjdkagjkldagkdhasj;fdsakfjdkaj;fkdahgkhdsajgdksa;gkdsalhgkldghkdhakgfjdklagkdhasklgdsakl;g"))
+server.send(SocketWrapperPacket("hifdjgkdgklfgkljgkakgjdklagjfklghfjgdlhgkdjgkjdkagjkldagkdhasjfdsakfjdkajfkdahgkhdsajgdksagkdsalhgkldghkdhakgfjdklagkdhasklgdsaklg"))
 
 
 

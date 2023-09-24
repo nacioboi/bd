@@ -3,6 +3,7 @@ import threading
 import sys
 
 
+
 def server(p):
 	server = Server(bind_address='0.0.0.0', port=p)
 	server.start()
@@ -28,6 +29,8 @@ def server(p):
 	assert packet.decode(True) == "{'header_1': 2, 'header_2': 'test', 'header_3': True}'\\U000f0000'hello there!"
 
 	server.stop()
+
+
 
 def client(p):
 	client = Client(host='127.0.0.1', port=p)
@@ -56,8 +59,9 @@ def client(p):
 	client.stop()
 
 
+
 if len(sys.argv) != 2:
-	print("Usage python3 header-test.py <port>")
+	print(f"Usage python3 {sys.argv[0]} <port>")
 	exit()
 
 port = int(sys.argv[1])
