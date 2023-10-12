@@ -5,8 +5,8 @@ import sys
 
 
 def server(p):
-	server = Server(bind_address='0.0.0.0', port=p)
-	server.start()
+	_server = Server(bind_address='0.0.0.0', port=p)
+	_server.start()
 
 	pkt = Packet("hello there!", PacketHeader(header_1=2, header_2='test', header_3=True))
 	assert pkt.header["header_1"] == 2
@@ -15,12 +15,13 @@ def server(p):
 	assert pkt.msg == 'hello there!'
 	assert pkt.header == {"header_1": 2, "header_2": "test", "header_3": True}
 	assert pkt.decode(True) == "{'header_1': 2, 'header_2': 'test', 'header_3': True}'\\U000f0000'hello there!"
-
-	server.send(pkt)
+	print(f"Server: Sending packet {pkt.msg}")
+	_server.send(pkt)
 
 	out_packet = OutputVar[Packet]()
-	server.recv(out_packet)
+	_server.recv(out_packet)
 	packet = out_packet()
+	print(f"Server: Received packet {packet.msg}")
 	assert packet.header["header_1"] == 2
 	assert packet.header["header_2"] == 'test'
 	assert packet.header["header_3"] == True
@@ -28,17 +29,18 @@ def server(p):
 	assert packet.header == {"header_1": 2, "header_2": "test", "header_3": True}
 	assert packet.decode(True) == "{'header_1': 2, 'header_2': 'test', 'header_3': True}'\\U000f0000'hello there!"
 
-	server.stop()
+	_server.stop()
 
 
 
 def client(p):
-	client = Client(host='127.0.0.1', port=p)
-	client.start()
+	_client = Client(host='127.0.0.1', port=p)
+	_client.start()
 
 	out_packet = OutputVar[Packet]()
-	client.recv(out_packet)
+	_client.recv(out_packet)
 	packet = out_packet()
+	print(f"Client: Received packet {packet.msg}")
 	assert packet.header["header_1"] == 2
 	assert packet.header["header_2"] == 'test'
 	assert packet.header["header_3"] == True
@@ -53,10 +55,10 @@ def client(p):
 	assert pkt.msg == 'hello there!'
 	assert pkt.header == {"header_1": 2, "header_2": "test", "header_3": True}
 	assert pkt.decode(True) == "{'header_1': 2, 'header_2': 'test', 'header_3': True}'\\U000f0000'hello there!"
+	print(f"Client: Sending packet {pkt.msg}")
+	_client.send(pkt)
 
-	client.send(pkt)
-
-	client.stop()
+	_client.stop()
 
 
 
@@ -71,6 +73,3 @@ client_thread = threading.Thread(target=client, args=(port,))
 
 server_thread.start()
 client_thread.start()
-
-server_thread.join()
-client_thread.join()

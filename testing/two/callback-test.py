@@ -7,73 +7,73 @@ import sys
 
 def server(p):
 	def on_receive(packet:Packet):
-		print(f"Received: {packet.msg}")
+		print(f"Server: Received: {packet.msg}")
 		if packet.msg == "remove-me":
 			return Packet("")
 		return packet
 
 	def on_send(packet:Packet):
-		print(f"Sending: {packet.msg}")
+		print(f"Server: Sending: {packet.msg}")
 		if packet.msg == "do-not-remove-me":
 			return Packet("remove-me")
 		return packet
 
-	server = Server(bind_address='0.0.0.0', port=p)
-	server.define_recv_callback(on_receive)
-	server.define_send_callback(on_send)
-	server.start()
+	_server = Server(bind_address='0.0.0.0', port=p)
+	_server.define_recv_callback(on_receive)
+	_server.define_send_callback(on_send)
+	_server.start()
 
 	pkt = Packet("hello there!")
-	server.send(pkt)
+	_server.send(pkt)
+
+	out_packet = OutputVar[Packet]()
+	_server.recv(out_packet)
+	packet = out_packet()
 
 	pkt = Packet("do-not-remove-me")
-	server.send(pkt)
+	_server.send(pkt)
 
-	out_packet = OutputVar[packet]()
-	server.recv(out_packet)
+	out_packet = OutputVar[Packet]()
+	_server.recv(out_packet)
 	packet = out_packet()
 
-	out_packet = OutputVar[packet]()
-	server.recv(out_packet)
-	packet = out_packet()
-
-	server.stop()
+	_server.stop()
 
 
 
 def client(p):
 	def on_receive(packet:Packet):
-		print(f"Received: {packet.msg}")
+		print(f"Client: Received: {packet.msg}")
 		if packet.msg == "remove-me":
 			return Packet("")
 		return packet
 
 	def on_send(packet:Packet):
-		print(f"Sending: {packet.msg}")
+		print(f"Client: Sending: {packet.msg}")
 		if packet.msg == "do-not-remove-me":
-			return Packet("remove-me", header=packet.header)
+			return Packet("remove-me")
 		return packet
 
-	client = client(bind_address='0.0.0.0', port=p)
-	client.define_recv_callback(on_receive)
-	client.define_send_callback(on_send)
-	client.start()
+	_client = Client(host='0.0.0.0', port=p)
+	_client.define_recv_callback(on_receive)
+	_client.define_send_callback(on_send)
+	_client.start()
+
+	out_packet = OutputVar[Packet]()
+	_client.recv(out_packet)
+	packet = out_packet()
 
 	pkt = Packet("hello there!")
-	client.send(pkt)
+	_client.send(pkt)
+
+	out_packet = OutputVar[Packet]()
+	_client.recv(out_packet)
+	packet = out_packet()
 
 	pkt = Packet("do-not-remove-me")
-	client.send(pkt)
+	_client.send(pkt)
 
-	out_packet = OutputVar[packet]()
-	client.recv(out_packet)
-	packet = out_packet()
-
-	out_packet = OutputVar[packet]()
-	client.recv(out_packet)
-	packet = out_packet()
-
-	client.stop()
+	_client.stop()
 
 
 
@@ -88,6 +88,3 @@ client_thread = threading.Thread(target=client, args=(port,))
 
 server_thread.start()
 client_thread.start()
-
-server_thread.join()
-client_thread.join()
