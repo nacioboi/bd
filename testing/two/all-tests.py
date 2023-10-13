@@ -230,6 +230,36 @@ class TestCallbackFeatureForSocketWrapper(unittest.TestCase):
 
 
 
+class TestPacketHeaderFeatureForSocketWrapper(unittest.TestCase):
+	
+	def make_server(self, p:int):
+		_server = Server(bind_address="127.0.0.1", port=p)
+		_server.start()
+		return _server
+	
+	def make_client(self, p:int):
+		_client = Client(host="127.0.0.1", port=p)
+		_client.start()
+		return _client
+	
+	def confirm_server(self, pkt1, pkt2):
+		self.assertEqual(pkt1.msg, "hello there!")
+		self.assertEqual(pkt2.msg, "hello there!")
+
+	def confirm_client(self, pkt1, pkt2):
+		self.assertEqual(pkt1.msg, "hello there!")
+		self.assertEqual(pkt2.msg, "hello there!")
+
+	def server_tester(self, p:int, out_ret:"OutputVar[bool]"):
+		try:
+			server = self.make_server(p)
+
+			pkt1 = Packet("hello there!", PacketHeader)
+			server.send(pkt1)
+
+			out_pkt2 = OutputVar[Packet]()
+			server.recv(
+
 if __name__ == "__main__":
 	unittest.main()
 

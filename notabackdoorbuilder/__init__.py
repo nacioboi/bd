@@ -171,18 +171,16 @@ def handle_server(server_file):
 	paste_setup_code(server_file, "server")
 
 def handle_setup(mode):
+	if len(sys.argv) != 2:
+		print(f"usage: {sys.argv[0]} <python executable path>")
 	build()
 	if mode == "server":
-		with open("___build_candidate__server___.py", "r") as f:
-			contents = f.read()
 		if len(sys.argv) > 2:
 			args = sys.argv[2:]
 		else:
 			args = []
 		os.execl(sys.argv[1], "python", "./___build_candidate__server___.py", *args)
 	elif mode == "client":
-		with open("___build_candidate__client___.py", "r") as f:
-			contents = f.read()
 		if len(sys.argv) > 2:
 			args = sys.argv[2:]
 		else:

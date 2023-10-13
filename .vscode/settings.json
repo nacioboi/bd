@@ -1,5 +1,6 @@
 {
 	"cSpell.words": [
+		"backdoors",
 		"comms",
 		"GETFL",
 		"hifdjgkdgklfgkljgkakgjdklagjfklghfjgdlhgkdjgkjdkagjkldagkdhasjfdsakfjdkajfkdahgkhdsajgdksagkdsalhgkldghkdhakgfjdklagkdhasklgdsaklg",
@@ -8,6 +9,7 @@
 		"notabackdoorbuilder",
 		"ptysocket",
 		"sendline",
-		"SETFL"
+		"SETFL",
+		"yinyang"
 	]
 }
