@@ -3,3 +3,4 @@
 /venv/
 /notabackdoorbuilder/__pycache__/
 /ptysocket/__pycache__/
+*.pyc
