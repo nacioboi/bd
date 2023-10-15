@@ -1,2 +1,0 @@
-from ptysocket.PTYSocketClient import PTYSocketClient
-from ptysocket.PTYSocketServer import PTYSocketServer
