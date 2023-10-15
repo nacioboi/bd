@@ -1,6 +1,7 @@
 /___build_candidate__client___.py
 /___build_candidate__server___.py
 /venv/
-/notabackdoorbuilder/__pycache__/
-/ptysocket/__pycache__/
+/testing/*/woody/
+/testing/*/ptysocket/
+
 *.pyc
