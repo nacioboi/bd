@@ -1,9 +1,9 @@
 /___build_candidate__client___.py
 /___build_candidate__server___.py
 /venv/
-/testing/one/woody/
-/testing/one/ptysocket/
-/testing/two/woody/
-/testing/two/ptysocket/
+/testing/one/woody
+/testing/one/ptysocket
+/testing/two/woody
+/testing/two/ptysocket
 
 *.pyc
