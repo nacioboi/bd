@@ -1,22 +1,33 @@
+import multiprocessing
 import socket
 import json
 import time
 from typing import Any
 from typing import TypeVar, Generic
 
+
+
+def STOP_SOCK(s:socket.socket, out_success:"OutputVar[bool]"):
+	s.close()
+	out_success.set(True)
+
+
+
 T = TypeVar("T")
 
 class OutputVar(Generic[T]):
-	def __init__(self, value:T=None) -> None:
+	def __init__(self, value:T) -> None:
 		self._value = value
 
-	def _set(self, value:T) -> None:
+	def set(self, value:T) -> None:
 		self._value = value
 
 	def __call__(self, *args: Any, **kwds: Any) -> T:
 		if len(args) != 0 or len(kwds) != 0:
 			raise TypeError("OutputVar object is not callable with arguments")
 		return self._value
+
+
 
 class PacketHeader:
 	def __init__(self, **kwargs):
@@ -25,6 +36,8 @@ class PacketHeader:
 
 	def __call__(self, *args, **kwargs) -> str:
 		return self._json
+
+
 
 class Packet:
 	"""
@@ -74,6 +87,8 @@ class Packet:
 			return Packet(x[0], header=PacketHeader(), splitter=split_char)
 		h, m = x[0], x[1]
 		return Packet(m, header=h, splitter=split_char)
+
+
 
 class Client:
 	"""
@@ -152,8 +167,20 @@ class Client:
 		time.sleep(0.25)
 		self._sock.connect((self._host, self._port))
 	
-	def stop(self) -> None:
-		self._sock.close()
+	def stop(self, non_blocking:bool=False) -> bool:
+		global STOP_SOCK
+		success = OutputVar[bool](False)
+		if non_blocking:
+			proc = multiprocessing.Process(target=STOP_SOCK, args=(self._sock, success))
+			proc.start()
+			time.sleep(5)
+			proc.terminate()
+			proc.join()
+		else:
+			self._sock.stop()
+			success.set(True)
+		return success()
+			
 
 	def define_recv_callback(self, callback) -> None:
 		self._recv_callback = callback
@@ -173,11 +200,13 @@ class Client:
 			pkt = Packet(msg.strip(self._suffix), header=PacketHeader(), splitter=self._split_char)
 		else:
 			pkt = Packet(msg.strip(self._suffix), header=PacketHeader(header), splitter=self._split_char)
-		return out_packet._set(self._recv_callback(pkt))
+		return out_packet.set(self._recv_callback(pkt))
 	
 	def send(self, packet:Packet) -> None:
 		p = self._send_callback(packet)
 		self._send(self._encode_msg(f"{p.msg}{self._suffix}"))
+
+
 
 class Server:
 	"""
@@ -261,8 +290,19 @@ class Server:
 		self._sock.listen()
 		self._sock, _ = self._sock.accept()
 
-	def stop(self) -> None:
-		self._sock.close()
+	def stop(self, non_blocking:bool=False) -> bool:
+		global STOP_SOCK
+		success = OutputVar[bool](False)
+		if non_blocking:
+			proc = multiprocessing.Process(target=STOP_SOCK, args=(self._sock, success))
+			proc.start()
+			time.sleep(5)
+			proc.terminate()
+			proc.join()
+		else:
+			self._sock.stop()
+			success.set(True)
+		return success()
 
 	def define_recv_callback(self, callback) -> None:
 		self._recv_callback = callback
@@ -282,7 +322,7 @@ class Server:
 			pkt = Packet(msg.strip(self._suffix), header=PacketHeader(), splitter=self._split_char)
 		else:
 			pkt = Packet(msg.strip(self._suffix), header=PacketHeader(header), splitter=self._split_char)
-		return out_packet._set(self._recv_callback(pkt))
+		return out_packet.set(self._recv_callback(pkt))
 	
 	def send(self, packet:Packet) -> None:
 		p = self._send_callback(packet)

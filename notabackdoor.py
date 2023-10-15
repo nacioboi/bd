@@ -32,6 +32,5 @@ def main(context):
 	pty_sock_ref:ValueReference[ptysocket.PTYSocketClient] = context["ptysocket"]
 
 	pty_sock_ref.value.connect()
-	pty_sock_ref.value.
 
 
