@@ -113,6 +113,24 @@ class Client:
 	`
 	"""
 
+	def _default_recv_callback(self, packet:Packet) -> Packet:
+		return packet
+	
+	def _default_send_callback(self, packet:Packet) -> Packet:
+		return packet
+	
+	def _decode_msg(self, msg:bytes) -> str:
+		return msg.decode(self._encoding)
+	
+	def _encode_msg(self, msg:str) -> bytes:
+		return msg.encode(self._encoding)
+	
+	def _recv(self) -> Packet:
+		return Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
+	
+	def _send(self, packet:Packet) -> None:
+		self._sock.sendall(self._encode_msg(packet.decode()))
+
 	def __init__(self, host:str, port:int, encoding:str='utf-8', buffer_size:int=512, suffix:chr='\U000f0000',
 			split_char:chr='\u0000', *socket_args, **socket_kwargs) -> None:
 		self._host = host
@@ -124,14 +142,8 @@ class Client:
 
 		self._sock = socket.socket(*socket_args, **socket_kwargs)
 
-		self._recv_callback = lambda packet: packet
-		self._send_callback = lambda packet: packet
-
-		self._decode_msg = lambda msg: msg.decode(self._encoding)
-		self._encode_msg = lambda msg: msg.encode(self._encoding)
-
-		self._recv = lambda: Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
-		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.decode()))
+		self._recv_callback = self._default_recv_callback
+		self._send_callback = self._default_send_callback
 	
 	def _handle_handshake(self) -> None:
 		sock = socket.socket()
@@ -177,10 +189,9 @@ class Client:
 			proc.terminate()
 			proc.join()
 		else:
-			self._sock.stop()
+			self._sock.close()
 			success.set(True)
 		return success()
-			
 
 	def define_recv_callback(self, callback) -> None:
 		self._recv_callback = callback
@@ -231,6 +242,24 @@ class Server:
 	`
 	"""
 
+	def _default_recv_callback(self, packet:Packet) -> Packet:
+		return packet
+	
+	def _default_send_callback(self, packet:Packet) -> Packet:
+		return packet
+
+	def _decode_msg(self, msg:bytes) -> str:
+		return msg.decode(self._encoding)
+	
+	def _encode_msg(self, msg:str) -> bytes:
+		return msg.encode(self._encoding)
+
+	def _recv(self) -> Packet:
+		return Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
+
+	def _send(self, packet:Packet) -> None:
+		self._sock.sendall(self._encode_msg(packet.decode()))
+
 	def __init__(self, bind_address:str, port:int, encoding:str='utf-8', buffer_size:int=512, suffix:chr='\U000f0000',
 			split_char:chr='\u0000', *socket_args, **socket_kwargs) -> None:
 		self._bind_address = bind_address
@@ -242,14 +271,8 @@ class Server:
 
 		self._sock = socket.socket(*socket_args, **socket_kwargs)
 
-		self._recv_callback = lambda packet: packet
-		self._send_callback = lambda packet: packet
-
-		self._decode_msg = lambda msg: msg.decode(self._encoding)
-		self._encode_msg = lambda msg: msg.encode(self._encoding)
-		
-		self._recv = lambda: Packet.encode(self._decode_msg(self._sock.recv(self._buffer_size)), self._split_char)
-		self._send = lambda packet: self._sock.sendall(self._encode_msg(packet.decode()))
+		self._recv_callback = self._default_recv_callback
+		self._send_callback = self._default_send_callback
 
 	def _handle_handshake(self) -> None:
 		s = socket.socket()
@@ -300,7 +323,7 @@ class Server:
 			proc.terminate()
 			proc.join()
 		else:
-			self._sock.stop()
+			self._sock.close()
 			success.set(True)
 		return success()
 
